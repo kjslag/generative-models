@@ -26,6 +26,7 @@ class BaseDiffusionSampler:
         guider_config: Union[Dict, ListConfig, OmegaConf, None] = None,
         verbose: bool = False,
         device: str = "cuda",
+        temperature: float = 1.0,
     ):
         self.num_steps = num_steps
         self.discretization = instantiate_from_config(discretization_config)
@@ -37,14 +38,18 @@ class BaseDiffusionSampler:
         )
         self.verbose = verbose
         self.device = device
+        self.temperature = temperature
 
     def prepare_sampling_loop(self, x, cond, uc=None, num_steps=None):
         sigmas = self.discretization(
             self.num_steps if num_steps is None else num_steps, device=self.device
         )
+        print(f'prepare_sampling_loop: {sigmas=}')
         uc = default(uc, cond)
 
-        x *= torch.sqrt(1.0 + sigmas[0] ** 2.0)
+        # x *= self.temperature**0.5 * torch.sqrt(1.0 + sigmas[0] ** 2.0)
+        print('NOTE MY INIT !!!!!!!!!')
+        x *= self.temperature**0.5 * sigmas[0]
         num_sigmas = len(sigmas)
 
         s_in = x.new_ones([x.shape[0]])
@@ -93,11 +98,11 @@ class EDMSampler(SingleStepDiffusionSampler):
     def sampler_step(self, sigma, next_sigma, denoiser, x, cond, uc=None, gamma=0.0):
         sigma_hat = sigma * (gamma + 1.0)
         if gamma > 0:
-            eps = torch.randn_like(x) * self.s_noise
+            eps = torch.randn_like(x) * self.s_noise * self.temperature**0.5
             x = x + eps * append_dims(sigma_hat**2 - sigma**2, x.ndim) ** 0.5
 
         denoised = self.denoise(x, denoiser, sigma_hat, cond, uc)
-        d = to_d(x, sigma_hat, denoised)
+        d = to_d(x, sigma_hat, denoised, self.temperature)
         dt = append_dims(next_sigma - sigma_hat, x.ndim)
 
         euler_step = self.euler_step(x, d, dt)
@@ -139,7 +144,7 @@ class AncestralSampler(SingleStepDiffusionSampler):
         self.noise_sampler = lambda x: torch.randn_like(x)
 
     def ancestral_euler_step(self, x, denoised, sigma, sigma_down):
-        d = to_d(x, sigma, denoised)
+        d = to_d(x, sigma, denoised, self.temperature)
         dt = append_dims(sigma_down - sigma, x.ndim)
 
         return self.euler_step(x, d, dt)
@@ -147,7 +152,7 @@ class AncestralSampler(SingleStepDiffusionSampler):
     def ancestral_step(self, x, sigma, next_sigma, sigma_up):
         x = torch.where(
             append_dims(next_sigma, x.ndim) > 0.0,
-            x + self.noise_sampler(x) * self.s_noise * append_dims(sigma_up, x.ndim),
+            x + self.noise_sampler(x) * self.s_noise * self.temperature**0.5 * append_dims(sigma_up, x.ndim),
             x,
         )
         return x
@@ -194,7 +199,7 @@ class LinearMultistepSampler(BaseDiffusionSampler):
                 *self.guider.prepare_inputs(x, sigma, cond, uc), **kwargs
             )
             denoised = self.guider(denoised, sigma)
-            d = to_d(x, sigma, denoised)
+            d = to_d(x, sigma, denoised, self.temperature)
             ds.append(d)
             if len(ds) > self.order:
                 ds.pop(0)
@@ -224,7 +229,7 @@ class HeunEDMSampler(EDMSampler):
             return euler_step
         else:
             denoised = self.denoise(euler_step, denoiser, next_sigma, cond, uc)
-            d_new = to_d(euler_step, next_sigma, denoised)
+            d_new = to_d(euler_step, next_sigma, denoised, self.temperature)
             d_prime = (d + d_new) / 2.0
 
             # apply correction if noise level is not 0
@@ -260,6 +265,7 @@ class DPMPP2SAncestralSampler(AncestralSampler):
         return mult1, mult2, mult3, mult4
 
     def sampler_step(self, sigma, next_sigma, denoiser, x, cond, uc=None, **kwargs):
+        assert self.temperature == 1
         sigma_down, sigma_up = get_ancestral_step(sigma, next_sigma, eta=self.eta)
         denoised = self.denoise(x, denoiser, sigma, cond, uc)
         x_euler = self.ancestral_euler_step(x, denoised, sigma, sigma_down)
@@ -318,6 +324,7 @@ class DPMPP2MSampler(BaseDiffusionSampler):
         cond,
         uc=None,
     ):
+        assert self.temperature == 1
         denoised = self.denoise(x, denoiser, sigma, cond, uc)
 
         h, r, t, t_next = self.get_variables(sigma, next_sigma, previous_sigma)

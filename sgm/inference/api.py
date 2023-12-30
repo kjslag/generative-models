@@ -74,6 +74,7 @@ class SamplingParams:
     s_noise: float = 1.0
     eta: float = 1.0
     order: int = 4
+    temperature: float = 1.0
 
 
 @dataclass
@@ -296,7 +297,9 @@ def get_guider_config(params: SamplingParams):
 
         guider_config = {
             "target": "sgm.modules.diffusionmodules.guiders.VanillaCFG",
-            "params": {"scale": scale, "dyn_thresh_config": dyn_thresh_config},
+            "params": {"scale": scale,
+            # "dyn_thresh_config": dyn_thresh_config
+            },
         }
     else:
         raise NotImplementedError
@@ -335,6 +338,7 @@ def get_sampler_config(params: SamplingParams):
             s_tmin=params.s_tmin,
             s_tmax=params.s_tmax,
             s_noise=params.s_noise,
+            temperature=params.temperature,
             verbose=True,
         )
     if params.sampler == Sampler.HEUN_EDM:
@@ -346,6 +350,7 @@ def get_sampler_config(params: SamplingParams):
             s_tmin=params.s_tmin,
             s_tmax=params.s_tmax,
             s_noise=params.s_noise,
+            temperature=params.temperature,
             verbose=True,
         )
     if params.sampler == Sampler.EULER_ANCESTRAL:
@@ -355,6 +360,7 @@ def get_sampler_config(params: SamplingParams):
             guider_config=guider_config,
             eta=params.eta,
             s_noise=params.s_noise,
+            temperature=params.temperature,
             verbose=True,
         )
     if params.sampler == Sampler.DPMPP2S_ANCESTRAL:
@@ -364,6 +370,7 @@ def get_sampler_config(params: SamplingParams):
             guider_config=guider_config,
             eta=params.eta,
             s_noise=params.s_noise,
+            temperature=params.temperature,
             verbose=True,
         )
     if params.sampler == Sampler.DPMPP2M:
@@ -371,6 +378,7 @@ def get_sampler_config(params: SamplingParams):
             num_steps=params.steps,
             discretization_config=discretization_config,
             guider_config=guider_config,
+            temperature=params.temperature,
             verbose=True,
         )
     if params.sampler == Sampler.LINEAR_MULTISTEP:
@@ -379,6 +387,7 @@ def get_sampler_config(params: SamplingParams):
             discretization_config=discretization_config,
             guider_config=guider_config,
             order=params.order,
+            temperature=params.temperature,
             verbose=True,
         )
 

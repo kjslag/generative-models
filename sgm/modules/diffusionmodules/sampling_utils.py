@@ -31,8 +31,8 @@ def get_ancestral_step(sigma_from, sigma_to, eta=1.0):
     return sigma_down, sigma_up
 
 
-def to_d(x, sigma, denoised):
-    return (x - denoised) / append_dims(sigma, x.ndim)
+def to_d(x, sigma, denoised, temperature):
+    return (x - denoised) / (append_dims(sigma, x.ndim) * temperature) # NOTE
 
 
 def to_neg_log_sigma(sigma):
