@@ -75,6 +75,7 @@ class SamplingParams:
     eta: float = 1.0
     order: int = 4
     temperature: float = 1.0
+    noise_temperature: float = None
 
 
 @dataclass
@@ -339,6 +340,7 @@ def get_sampler_config(params: SamplingParams):
             s_tmax=params.s_tmax,
             s_noise=params.s_noise,
             temperature=params.temperature,
+            noise_temperature=params.noise_temperature,
             verbose=True,
         )
     if params.sampler == Sampler.HEUN_EDM:
@@ -351,6 +353,7 @@ def get_sampler_config(params: SamplingParams):
             s_tmax=params.s_tmax,
             s_noise=params.s_noise,
             temperature=params.temperature,
+            noise_temperature=params.noise_temperature,
             verbose=True,
         )
     if params.sampler == Sampler.EULER_ANCESTRAL:
@@ -361,6 +364,7 @@ def get_sampler_config(params: SamplingParams):
             eta=params.eta,
             s_noise=params.s_noise,
             temperature=params.temperature,
+            noise_temperature=params.noise_temperature,
             verbose=True,
         )
     if params.sampler == Sampler.DPMPP2S_ANCESTRAL:
@@ -371,6 +375,7 @@ def get_sampler_config(params: SamplingParams):
             eta=params.eta,
             s_noise=params.s_noise,
             temperature=params.temperature,
+            noise_temperature=params.noise_temperature,
             verbose=True,
         )
     if params.sampler == Sampler.DPMPP2M:
@@ -379,6 +384,7 @@ def get_sampler_config(params: SamplingParams):
             discretization_config=discretization_config,
             guider_config=guider_config,
             temperature=params.temperature,
+            noise_temperature=params.noise_temperature,
             verbose=True,
         )
     if params.sampler == Sampler.LINEAR_MULTISTEP:
@@ -388,6 +394,7 @@ def get_sampler_config(params: SamplingParams):
             guider_config=guider_config,
             order=params.order,
             temperature=params.temperature,
+            noise_temperature=params.noise_temperature,
             verbose=True,
         )
 

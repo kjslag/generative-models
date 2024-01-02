@@ -27,6 +27,7 @@ class BaseDiffusionSampler:
         verbose: bool = False,
         device: str = "cuda",
         temperature: float = 1.0,
+        noise_temperature: float = None,
     ):
         self.num_steps = num_steps
         self.discretization = instantiate_from_config(discretization_config)
@@ -39,6 +40,7 @@ class BaseDiffusionSampler:
         self.verbose = verbose
         self.device = device
         self.temperature = temperature
+        self.noise_temperature = noise_temperature if noise_temperature is not None else temperature
 
     def prepare_sampling_loop(self, x, cond, uc=None, num_steps=None):
         sigmas = self.discretization(
@@ -47,10 +49,18 @@ class BaseDiffusionSampler:
         print(f'prepare_sampling_loop: {sigmas=}')
         uc = default(uc, cond)
 
-        # x *= self.temperature**0.5 * torch.sqrt(1.0 + sigmas[0] ** 2.0)
-        print('NOTE MY INIT !!!!!!!!!')
-        x *= self.temperature**0.5 * sigmas[0]
+        x *= self.noise_temperature**0.5 * torch.sqrt(1.0 + sigmas[0] ** 2.0)
+        # print('NOTE MY INIT !!!!!!!!!')
+        # x *= self.noise_temperature**0.5 * sigmas[0]
         num_sigmas = len(sigmas)
+
+        power = 0.03
+        print(f'FOURIER {power} !!!!')
+        x = torch.fft.rfft2(x)
+        _, _, H, W = x.shape
+        scale = (1.0 + torch.arange(H, device=x.device).unsqueeze(-1)**2 + torch.arange(W, device=x.device)**2)**(-power)
+        x = x * scale
+        x = torch.fft.irfft2(x)
 
         s_in = x.new_ones([x.shape[0]])
 
@@ -98,7 +108,7 @@ class EDMSampler(SingleStepDiffusionSampler):
     def sampler_step(self, sigma, next_sigma, denoiser, x, cond, uc=None, gamma=0.0):
         sigma_hat = sigma * (gamma + 1.0)
         if gamma > 0:
-            eps = torch.randn_like(x) * self.s_noise * self.temperature**0.5
+            eps = torch.randn_like(x) * self.s_noise * self.noise_temperature**0.5
             x = x + eps * append_dims(sigma_hat**2 - sigma**2, x.ndim) ** 0.5
 
         denoised = self.denoise(x, denoiser, sigma_hat, cond, uc)
@@ -152,7 +162,7 @@ class AncestralSampler(SingleStepDiffusionSampler):
     def ancestral_step(self, x, sigma, next_sigma, sigma_up):
         x = torch.where(
             append_dims(next_sigma, x.ndim) > 0.0,
-            x + self.noise_sampler(x) * self.s_noise * self.temperature**0.5 * append_dims(sigma_up, x.ndim),
+            x + self.noise_sampler(x) * self.s_noise * self.noise_temperature**0.5 * append_dims(sigma_up, x.ndim),
             x,
         )
         return x
