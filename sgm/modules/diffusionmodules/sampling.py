@@ -24,6 +24,7 @@ class BaseDiffusionSampler:
         discretization_config: Union[Dict, ListConfig, OmegaConf],
         num_steps: Union[int, None] = None,
         guider_config: Union[Dict, ListConfig, OmegaConf, None] = None,
+        reverse: bool = False,
         verbose: bool = False,
         device: str = "cuda",
     ):
@@ -35,6 +36,7 @@ class BaseDiffusionSampler:
                 DEFAULT_GUIDER,
             )
         )
+        self.reverse = reverse
         self.verbose = verbose
         self.device = device
 
@@ -44,7 +46,8 @@ class BaseDiffusionSampler:
         )
         uc = default(uc, cond)
 
-        x *= torch.sqrt(1.0 + sigmas[0] ** 2.0)
+        if not self.reverse:
+            x *= torch.sqrt(1.0 + sigmas[0] ** 2.0)
         num_sigmas = len(sigmas)
 
         s_in = x.new_ones([x.shape[0]])

@@ -26,17 +26,18 @@ class Discretization:
 
 
 class EDMDiscretization(Discretization):
-    def __init__(self, sigma_min=0.002, sigma_max=80.0, rho=7.0):
+    def __init__(self, sigma_min=0.002, sigma_max=80.0, rho=7.0, reverse=False):
         self.sigma_min = sigma_min
         self.sigma_max = sigma_max
         self.rho = rho
+        self.reverse = reverse
 
     def get_sigmas(self, n, device="cpu"):
         ramp = torch.linspace(0, 1, n, device=device)
         min_inv_rho = self.sigma_min ** (1 / self.rho)
         max_inv_rho = self.sigma_max ** (1 / self.rho)
         sigmas = (max_inv_rho + ramp * (min_inv_rho - max_inv_rho)) ** self.rho
-        return sigmas
+        return sigmas if not self.reverse else torch.flip(sigmas, (0,))
 
 
 class LegacyDDPMDiscretization(Discretization):
@@ -45,9 +46,11 @@ class LegacyDDPMDiscretization(Discretization):
         linear_start=0.00085,
         linear_end=0.0120,
         num_timesteps=1000,
+        reverse=False
     ):
         super().__init__()
         self.num_timesteps = num_timesteps
+        assert not reverse
         betas = make_beta_schedule(
             "linear", num_timesteps, linear_start=linear_start, linear_end=linear_end
         )

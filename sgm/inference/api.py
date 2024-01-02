@@ -74,6 +74,7 @@ class SamplingParams:
     s_noise: float = 1.0
     eta: float = 1.0
     order: int = 4
+    reverse: bool = False
 
 
 @dataclass
@@ -217,6 +218,7 @@ class SamplingPipeline:
         negative_prompt: str = "",
         samples: int = 1,
         return_latents: bool = False,
+        skip_encode: bool = False,
     ):
         sampler = get_sampler_config(params)
 
@@ -229,8 +231,9 @@ class SamplingPipeline:
         value_dict = asdict(params)
         value_dict["prompt"] = prompt
         value_dict["negative_prompt"] = negative_prompt
-        value_dict["target_width"] = width
-        value_dict["target_height"] = height
+        mult = 8 if skip_encode else 1
+        value_dict["target_width"] = width * mult
+        value_dict["target_height"] = height * mult
         return do_img2img(
             image,
             self.model,
@@ -335,6 +338,7 @@ def get_sampler_config(params: SamplingParams):
             s_tmin=params.s_tmin,
             s_tmax=params.s_tmax,
             s_noise=params.s_noise,
+            reverse=params.reverse,
             verbose=True,
         )
     if params.sampler == Sampler.HEUN_EDM:
@@ -346,6 +350,7 @@ def get_sampler_config(params: SamplingParams):
             s_tmin=params.s_tmin,
             s_tmax=params.s_tmax,
             s_noise=params.s_noise,
+            reverse=params.reverse,
             verbose=True,
         )
     if params.sampler == Sampler.EULER_ANCESTRAL:
@@ -355,6 +360,7 @@ def get_sampler_config(params: SamplingParams):
             guider_config=guider_config,
             eta=params.eta,
             s_noise=params.s_noise,
+            reverse=params.reverse,
             verbose=True,
         )
     if params.sampler == Sampler.DPMPP2S_ANCESTRAL:
@@ -364,6 +370,7 @@ def get_sampler_config(params: SamplingParams):
             guider_config=guider_config,
             eta=params.eta,
             s_noise=params.s_noise,
+            reverse=params.reverse,
             verbose=True,
         )
     if params.sampler == Sampler.DPMPP2M:
@@ -371,6 +378,7 @@ def get_sampler_config(params: SamplingParams):
             num_steps=params.steps,
             discretization_config=discretization_config,
             guider_config=guider_config,
+            reverse=params.reverse,
             verbose=True,
         )
     if params.sampler == Sampler.LINEAR_MULTISTEP:
@@ -379,6 +387,7 @@ def get_sampler_config(params: SamplingParams):
             discretization_config=discretization_config,
             guider_config=guider_config,
             order=params.order,
+            reverse=params.reverse,
             verbose=True,
         )
 
